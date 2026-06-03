@@ -8,35 +8,39 @@ import { formatWeek, getInitials, cn } from '@/lib/utils'
 import Link from 'next/link'
 import { ArrowLeft, Weight, Moon, Footprints, Target } from 'lucide-react'
 
-export default async function ClientDetailPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>
-  searchParams: Promise<{ checkin?: string }>
-}) {
-  const { id } = await params
-  const { checkin: checkinParam } = await searchParams
+export default async function ClientDetailPage(props: any) {
+  const params = await props.params
+  const searchParams = await props.searchParams
+  const id = params.id
+  const checkinParam = searchParams?.checkin
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
   const { data: client } = await supabase
-    .from('clients').select(`*, profile:profiles(*)`)
-    .eq('id', id).eq('coach_id', user.id).single()
+    .from('clients')
+    .select('*, profile:profiles(*)')
+    .eq('id', id)
+    .eq('coach_id', user.id)
+    .single()
 
   if (!client) notFound()
 
   const { data: checkins } = await supabase
-    .from('checkins').select(`*, progress_photos(*)`)
-    .eq('client_id', id).order('week_start', { ascending: false }).limit(12)
+    .from('checkins')
+    .select('*, progress_photos(*)')
+    .eq('client_id', id)
+    .order('week_start', { ascending: false })
+    .limit(12)
 
   const checkinList = await Promise.all(
     (checkins ?? []).map(async (ci) => {
       const photos = await Promise.all(
         (ci.progress_photos ?? []).map(async (photo: any) => {
-          const { data } = await supabase.storage.from('progress-photos').createSignedUrl(photo.storage_path, 3600)
+          const { data } = await supabase.storage
+            .from('progress-photos')
+            .createSignedUrl(photo.storage_path, 3600)
           return { ...photo, url: data?.signedUrl }
         })
       )
@@ -45,7 +49,7 @@ export default async function ClientDetailPage({
   )
 
   const activeCheckinId = checkinParam ?? checkinList[0]?.id
-  const activeCheckin = checkinList.find(c => c.id === activeCheckinId) ?? checkinList[0]
+  const activeCheckin = checkinList.find((c: any) => c.id === activeCheckinId) ?? checkinList[0]
 
   return (
     <div>
@@ -90,14 +94,21 @@ export default async function ClientDetailPage({
         <section className="mb-4">
           <h2 className="font-display text-lg tracking-wider mb-3">Check-ins</h2>
           <div className="flex gap-2 overflow-x-auto pb-2 mb-4 -mx-4 px-4">
-            {checkinList.map(ci => (
-              <Link key={ci.id} href={`/coach/clients/${id}?checkin=${ci.id}`}
-                className={cn('flex-shrink-0 px-3 py-2 rounded-lg text-xs font-medium border transition-all',
+            {checkinList.map((ci: any) => (
+              <Link
+                key={ci.id}
+                href={`/coach/clients/${id}?checkin=${ci.id}`}
+                className={cn(
+                  'flex-shrink-0 px-3 py-2 rounded-lg text-xs font-medium border transition-all',
                   ci.id === activeCheckinId
                     ? 'border-brand-orange bg-brand-orange/10 text-brand-orange'
-                    : 'border-brand-border bg-brand-gray text-brand-muted hover:border-brand-muted')}>
+                    : 'border-brand-border bg-brand-gray text-brand-muted hover:border-brand-muted'
+                )}
+              >
                 <div>{formatWeek(ci.week_start)}</div>
-                {!ci.coach_reviewed_at && <div className="w-1.5 h-1.5 rounded-full bg-brand-orange mx-auto mt-1" />}
+                {!ci.coach_reviewed_at && (
+                  <div className="w-1.5 h-1.5 rounded-full bg-brand-orange mx-auto mt-1" />
+                )}
               </Link>
             ))}
           </div>
@@ -116,13 +127,19 @@ export default async function ClientDetailPage({
                   <ScoreBar label="Stress Level" value={activeCheckin.stress_level} colorByValue={false} />
                   {activeCheckin.avg_sleep_hours && (
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2"><Moon className="w-4 h-4 text-brand-muted" /><span className="text-sm text-brand-muted">Sleep</span></div>
+                      <div className="flex items-center gap-2">
+                        <Moon className="w-4 h-4 text-brand-muted" />
+                        <span className="text-sm text-brand-muted">Sleep</span>
+                      </div>
                       <span className="font-mono text-white">{activeCheckin.avg_sleep_hours}h avg</span>
                     </div>
                   )}
                   {activeCheckin.avg_daily_steps && (
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2"><Footprints className="w-4 h-4 text-brand-muted" /><span className="text-sm text-brand-muted">Steps</span></div>
+                      <div className="flex items-center gap-2">
+                        <Footprints className="w-4 h-4 text-brand-muted" />
+                        <span className="text-sm text-brand-muted">Steps</span>
+                      </div>
                       <span className="font-mono text-white">{activeCheckin.avg_daily_steps.toLocaleString()}</span>
                     </div>
                   )}
@@ -132,9 +149,18 @@ export default async function ClientDetailPage({
               <div className="card">
                 <h3 className="font-display text-base tracking-wider mb-3">Training</h3>
                 <div className="grid grid-cols-3 gap-2">
-                  <div className="text-center"><div className="font-mono text-xl text-white">{activeCheckin.sessions_completed ?? '—'}</div><div className="text-xs text-brand-muted">Done</div></div>
-                  <div className="text-center border-x border-brand-border"><div className="font-mono text-xl text-white">{activeCheckin.sessions_planned ?? '—'}</div><div className="text-xs text-brand-muted">Planned</div></div>
-                  <div className="text-center"><div className="font-mono text-xl text-white">{activeCheckin.avg_session_rpe ?? '—'}</div><div className="text-xs text-brand-muted">Avg RPE</div></div>
+                  <div className="text-center">
+                    <div className="font-mono text-xl text-white">{activeCheckin.sessions_completed ?? '—'}</div>
+                    <div className="text-xs text-brand-muted">Done</div>
+                  </div>
+                  <div className="text-center border-x border-brand-border">
+                    <div className="font-mono text-xl text-white">{activeCheckin.sessions_planned ?? '—'}</div>
+                    <div className="text-xs text-brand-muted">Planned</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-mono text-xl text-white">{activeCheckin.avg_session_rpe ?? '—'}</div>
+                    <div className="text-xs text-brand-muted">Avg RPE</div>
+                  </div>
                 </div>
               </div>
 
@@ -142,9 +168,24 @@ export default async function ClientDetailPage({
                 <div className="card">
                   <h3 className="font-display text-base tracking-wider mb-3">Client Notes</h3>
                   <div className="space-y-3">
-                    {activeCheckin.wins && <div><p className="text-xs text-green-400 uppercase tracking-wider mb-1">Wins 🏆</p><p className="text-white text-sm">{activeCheckin.wins}</p></div>}
-                    {activeCheckin.struggles && <div><p className="text-xs text-red-400 uppercase tracking-wider mb-1">Struggles</p><p className="text-white text-sm">{activeCheckin.struggles}</p></div>}
-                    {activeCheckin.client_notes && <div><p className="text-xs text-brand-muted uppercase tracking-wider mb-1">Notes</p><p className="text-white text-sm">{activeCheckin.client_notes}</p></div>}
+                    {activeCheckin.wins && (
+                      <div>
+                        <p className="text-xs text-green-400 uppercase tracking-wider mb-1">Wins 🏆</p>
+                        <p className="text-white text-sm">{activeCheckin.wins}</p>
+                      </div>
+                    )}
+                    {activeCheckin.struggles && (
+                      <div>
+                        <p className="text-xs text-red-400 uppercase tracking-wider mb-1">Struggles</p>
+                        <p className="text-white text-sm">{activeCheckin.struggles}</p>
+                      </div>
+                    )}
+                    {activeCheckin.client_notes && (
+                      <div>
+                        <p className="text-xs text-brand-muted uppercase tracking-wider mb-1">Notes</p>
+                        <p className="text-white text-sm">{activeCheckin.client_notes}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -156,7 +197,11 @@ export default async function ClientDetailPage({
                 </div>
               )}
 
-              <CoachFeedbackForm checkinId={activeCheckin.id} existingFeedback={activeCheckin.coach_feedback} reviewed={!!activeCheckin.coach_reviewed_at} />
+              <CoachFeedbackForm
+                checkinId={activeCheckin.id}
+                existingFeedback={activeCheckin.coach_feedback}
+                reviewed={!!activeCheckin.coach_reviewed_at}
+              />
             </div>
           )}
         </section>
